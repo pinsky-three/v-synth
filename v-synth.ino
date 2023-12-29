@@ -2,8 +2,8 @@
 
 ESP_8_BIT_composite videoOut(true);
 
-// uint8_t input_1 = 34;
-uint8_t input_button_pin = 33;
+const uint8_t input_pot_pin = 34;
+const uint8_t input_button_pin = 33;
 
 const int CELL_SIZE_X = 2;
 const int CELL_SIZE_Y = 2;
@@ -20,7 +20,7 @@ uint8_t board_copy[CELLS_Y * CELLS_X];
 void IRAM_ATTR isr() {
   for (int y = CELLS_Y / 2 - 5; y < CELLS_Y / 2 + 5; y++) {
     for (int x = 0; x < CELLS_X; x++) {
-      board[y * CELLS_Y + x] = random(0, 2);
+      board[y * CELLS_Y + x] = random(0, 3);
     }
   }
 }
@@ -33,18 +33,20 @@ void setup() {
 
   for (int y = 0; y < CELLS_Y; y++) {
     for (int x = 0; x < CELLS_X; x++) {
-      board[y * CELLS_Y + x] = random(0, 2);
+      board[y * CELLS_Y + x] = random(0, 3);
     }
   }
 }
 
 void loop() {
   uint8_t** frameBufferLines = videoOut.getFrameBufferLines();
+  int color_multiplier = map(analogRead(input_pot_pin), 0, 4095, 0, 255);
 
   for (int y = 0; y < PIXELS_Y; y++) {
     for (int x = 0; x < PIXELS_X; x++) {
       frameBufferLines[y][x] =
-          board[(y / CELL_SIZE_Y) * CELLS_Y + (x / CELL_SIZE_X)] * 255;
+          board[(y / CELL_SIZE_Y) * CELLS_Y + (x / CELL_SIZE_X)] *
+          color_multiplier;
     }
   }
 
@@ -63,19 +65,20 @@ void evolve() {
       for (int dx = -1; dx < 2; dx++) {
         for (int dy = -1; dy < 2; dy++) {
           if (!(dx == 0 && dy == 0)) {
-            int n =
-                board[((y + dy) % CELLS_Y) * CELLS_Y + ((x + dx) % CELLS_X)];
-            total_n += n;
+            if (board[((y + dy) % CELLS_Y) * CELLS_Y + ((x + dx) % CELLS_X)] ==
+                2) {
+              total_n += 1;
+            }
           }
         }
       }
 
       if (total_n == 3) {
-        board_copy[y * CELLS_Y + x] = 1;
+        board_copy[y * CELLS_Y + x] = 2;
       }
 
-      if (total_n > 3 || total_n < 2) {
-        board_copy[y * CELLS_Y + x] = 0;
+      if (total_n > 3 || total_n < 2 && board_copy[y * CELLS_Y + x] > 0) {
+        board_copy[y * CELLS_Y + x] -= 1;
       }
     }
   }
