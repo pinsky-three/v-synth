@@ -14,13 +14,15 @@ const int PIXELS_Y = 240;
 const int CELLS_X = PIXELS_X / CELL_SIZE_X;
 const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
 
+const int CELL_LIFETIME = 3;
+
 uint8_t board[CELLS_Y * CELLS_X];
 uint8_t board_copy[CELLS_Y * CELLS_X];
 
 void IRAM_ATTR isr() {
   for (int y = CELLS_Y / 2 - 5; y < CELLS_Y / 2 + 5; y++) {
     for (int x = 0; x < CELLS_X; x++) {
-      board[y * CELLS_Y + x] = random(0, 3);
+      board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
     }
   }
 }
@@ -33,7 +35,7 @@ void setup() {
 
   for (int y = 0; y < CELLS_Y; y++) {
     for (int x = 0; x < CELLS_X; x++) {
-      board[y * CELLS_Y + x] = random(0, 3);
+      board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
     }
   }
 }
@@ -66,7 +68,7 @@ void evolve() {
         for (int dy = -1; dy < 2; dy++) {
           if (!(dx == 0 && dy == 0)) {
             if (board[((y + dy) % CELLS_Y) * CELLS_Y + ((x + dx) % CELLS_X)] ==
-                2) {
+                CELL_LIFETIME - 1) {
               total_n += 1;
             }
           }
@@ -74,7 +76,7 @@ void evolve() {
       }
 
       if (total_n == 3) {
-        board_copy[y * CELLS_Y + x] = 2;
+        board_copy[y * CELLS_Y + x] = CELL_LIFETIME - 1;
       }
 
       if (total_n > 3 || total_n < 2 && board_copy[y * CELLS_Y + x] > 0) {
