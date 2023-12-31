@@ -5,6 +5,7 @@ ESP_8_BIT_composite video_out(true);
 SimpleKalmanFilter kalman_filter(5, 5, 0.01);
 
 const uint8_t input_pot_pin = 34;
+const uint8_t input_pot_2_pin = 35;
 const uint8_t input_button_pin = 33;
 
 const int CELL_SIZE_X = 2;
@@ -13,7 +14,7 @@ const int CELL_SIZE_Y = 2;
 const int PIXELS_X = 256;
 const int PIXELS_Y = 240;
 
-const int CELL_LIFETIME = 4;
+const int CELL_LIFETIME = 2;
 
 const int CELLS_X = PIXELS_X / CELL_SIZE_X;
 const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
@@ -82,23 +83,27 @@ void evolve() {
       for (int dx = -1; dx < 2; dx++) {
         for (int dy = -1; dy < 2; dy++) {
           if (!(dx == 0 && dy == 0)) {
-            int neighbor =
+            int neighbor_state =
                 board[((y + dy) % CELLS_Y) * CELLS_Y + ((x + dx) % CELLS_X)];
 
-            if (neighbor == CELL_LIFETIME - 1) {
+            if (neighbor_state == CELL_LIFETIME - 1) {
               total_n += 1;
             }
           }
         }
       }
 
-      if (total_n == 3) {  // born
-        board_copy[y * CELLS_Y + x] = CELL_LIFETIME - 1;
-      } else if (current_state > 0 && total_n == 2 ||
-                 total_n == 3) {  // survive
-        board_copy[y * CELLS_Y + x] = current_state;
-      } else if (current_state > 0) {
-        board_copy[y * CELLS_Y + x] = current_state - 1;
+      for (uint8_t n = 0; n < 9; n++) {
+        uint8_t b = (born_rule >> n) & 1;
+        uint8_t s = (survive_rule >> n) & 1;
+
+        if (b && total_n == (n + 1)) {  // born
+          board_copy[y * CELLS_Y + x] = CELL_LIFETIME - 1;
+        } else if (s && current_state > 0 && total_n == (n + 1)) {  // survive
+          board_copy[y * CELLS_Y + x] = current_state;
+        } else if (current_state > 0) {
+          board_copy[y * CELLS_Y + x] = current_state - 1;
+        }
       }
     }
   }
