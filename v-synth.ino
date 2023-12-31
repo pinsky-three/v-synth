@@ -1,23 +1,25 @@
 #include <ESP_8_BIT_composite.h>
+#include <SimpleKalmanFilter.h>
 
-ESP_8_BIT_composite videoOut(true);
+ESP_8_BIT_composite video_out(true);
+SimpleKalmanFilter kalman_filter(5, 5, 0.01);
 
 const uint8_t input_pot_pin = 34;
 const uint8_t input_button_pin = 33;
 
-const int CELL_SIZE_X = 3;
-const int CELL_SIZE_Y = 3;
+const int CELL_SIZE_X = 2;
+const int CELL_SIZE_Y = 2;
 
 const int PIXELS_X = 256;
 const int PIXELS_Y = 240;
 
-const int CELL_LIFETIME = 3;
+const int CELL_LIFETIME = 5;
 
 const int CELLS_X = PIXELS_X / CELL_SIZE_X;
 const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
 
-int born_rule[9] = {3};
-int survive_rule[9] = {2, 3};
+uint16_t born_rule = 0b000000100;     // {3}
+uint16_t survive_rule = 0b000000110;  // {3,2}
 
 uint8_t board[CELLS_Y * CELLS_X];
 uint8_t board_copy[CELLS_Y * CELLS_X];
@@ -35,7 +37,7 @@ void setup() {
   attachInterrupt(input_button_pin, isr, FALLING);
   analogReadResolution(9);
 
-  videoOut.begin();
+  video_out.begin();
 
   for (int y = 0; y < CELLS_Y; y++) {
     for (int x = 0; x < CELLS_X; x++) {
@@ -53,12 +55,14 @@ void render(uint8_t** frameBufferLines, int color_multiplier) {
     }
   }
 
-  videoOut.waitForFrame();
+  video_out.waitForFrame();
 }
 
 void loop() {
-  uint8_t** frameBufferLines = videoOut.getFrameBufferLines();
-  int color_multiplier = map(analogRead(input_pot_pin), 0, 511, 0, 255);
+  uint8_t** frameBufferLines = video_out.getFrameBufferLines();
+  int estimated_value = kalman_filter.updateEstimate(analogRead(input_pot_pin));
+
+  int color_multiplier = map(estimated_value, 0, 511, 0, 255);
 
   render(frameBufferLines, color_multiplier);
   evolve();
@@ -88,8 +92,8 @@ void evolve() {
         board_copy[y * CELLS_Y + x] = CELL_LIFETIME - 1;
       }
 
-      if (total_n > 3 || total_n < 2 && board_copy[y * CELLS_Y + x] > 0) {
-        board_copy[y * CELLS_Y + x] -= 1;
+      if ((total_n > 3 || total_n < 2) && board[y * CELLS_Y + x] > 0) {
+        board_copy[y * CELLS_Y + x] = board[y * CELLS_Y + x] - 1;
       }
     }
   }

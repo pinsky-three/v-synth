@@ -232,6 +232,7 @@
                 "/Users/bregy/Library/Arduino15/packages/esp32/hardware/esp32/2.0.11/cores/esp32",
                 "/Users/bregy/Library/Arduino15/packages/esp32/hardware/esp32/2.0.11/variants/esp32",
                 "/Users/bregy/Documents/Arduino/libraries/ESP_8_BIT_Color_Composite_Video_Library",
+                "/Users/bregy/Documents/Arduino/libraries/SimpleKalmanFilter/src",
                 "/Users/bregy/Documents/Arduino/libraries/Adafruit_GFX_Library",
                 "/Users/bregy/Documents/Arduino/libraries/Adafruit_BusIO",
                 "/Users/bregy/Library/Arduino15/packages/esp32/hardware/esp32/2.0.11/libraries/Wire/src",
