@@ -13,7 +13,7 @@ const int CELL_SIZE_Y = 2;
 const int PIXELS_X = 256;
 const int PIXELS_Y = 240;
 
-const int CELL_LIFETIME = 5;
+const int CELL_LIFETIME = 4;
 
 const int CELLS_X = PIXELS_X / CELL_SIZE_X;
 const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
@@ -75,25 +75,30 @@ void evolve() {
 
   for (int y = 0; y < CELLS_Y; y++) {
     for (int x = 0; x < CELLS_X; x++) {
+      int current_state = board[y * CELLS_Y + x];
+
       uint8_t total_n = 0;
 
       for (int dx = -1; dx < 2; dx++) {
         for (int dy = -1; dy < 2; dy++) {
           if (!(dx == 0 && dy == 0)) {
-            if (board[((y + dy) % CELLS_Y) * CELLS_Y + ((x + dx) % CELLS_X)] ==
-                CELL_LIFETIME - 1) {
+            int neighbor =
+                board[((y + dy) % CELLS_Y) * CELLS_Y + ((x + dx) % CELLS_X)];
+
+            if (neighbor == CELL_LIFETIME - 1) {
               total_n += 1;
             }
           }
         }
       }
 
-      if (total_n == 3) {
+      if (total_n == 3) {  // born
         board_copy[y * CELLS_Y + x] = CELL_LIFETIME - 1;
-      }
-
-      if ((total_n > 3 || total_n < 2) && board[y * CELLS_Y + x] > 0) {
-        board_copy[y * CELLS_Y + x] = board[y * CELLS_Y + x] - 1;
+      } else if (current_state > 0 && total_n == 2 ||
+                 total_n == 3) {  // survive
+        board_copy[y * CELLS_Y + x] = current_state;
+      } else if (current_state > 0) {
+        board_copy[y * CELLS_Y + x] = current_state - 1;
       }
     }
   }
