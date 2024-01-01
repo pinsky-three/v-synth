@@ -19,33 +19,19 @@ const int CELL_LIFETIME = 2;
 const int CELLS_X = PIXELS_X / CELL_SIZE_X;
 const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
 
-uint16_t born_rule = 0b000000100;     // {3}
-uint16_t survive_rule = 0b000000110;  // {3,2}
+uint16_t born_rule = 0b000001000;     // {3}
+uint16_t survive_rule = 0b000001100;  // {3,2}
 
 uint8_t board[CELLS_Y * CELLS_X];
 uint8_t board_copy[CELLS_Y * CELLS_X];
 
-void IRAM_ATTR isr() {
-  for (int y = CELLS_Y / 2 - 5; y < CELLS_Y / 2 + 5; y++) {
-    for (int x = 0; x < CELLS_X; x++) {
-      board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
-    }
-  }
-}
-
-void setup() {
-  pinMode(input_button_pin, INPUT_PULLUP);
-  attachInterrupt(input_button_pin, isr, FALLING);
-  analogReadResolution(9);
-
-  video_out.begin();
-
-  for (int y = 0; y < CELLS_Y; y++) {
-    for (int x = 0; x < CELLS_X; x++) {
-      board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
-    }
-  }
-}
+// void IRAM_ATTR isr() {
+//   for (int y = CELLS_Y / 2 - 5; y < CELLS_Y / 2 + 5; y++) {
+//     for (int x = 0; x < CELLS_X; x++) {
+//       board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
+//     }
+//   }
+// }
 
 void render(uint8_t** frameBufferLines, int color_multiplier) {
   for (int y = 0; y < PIXELS_Y; y++) {
@@ -59,6 +45,28 @@ void render(uint8_t** frameBufferLines, int color_multiplier) {
   video_out.waitForFrame();
 }
 
+void generate_center_line() {
+  for (int y = CELLS_Y / 2 - 5; y < CELLS_Y / 2 + 5; y++) {
+    for (int x = 0; x < CELLS_X; x++) {
+      board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
+    }
+  }
+}
+
+void setup() {
+  pinMode(input_button_pin, INPUT_PULLUP);
+  // attachInterrupt(input_button_pin, isr, FALLING);
+  analogReadResolution(9);
+
+  video_out.begin();
+
+  for (int y = 0; y < CELLS_Y; y++) {
+    for (int x = 0; x < CELLS_X; x++) {
+      board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
+    }
+  }
+}
+
 void loop() {
   uint8_t** frameBufferLines = video_out.getFrameBufferLines();
   int estimated_value = kalman_filter.updateEstimate(analogRead(input_pot_pin));
@@ -67,6 +75,10 @@ void loop() {
 
   render(frameBufferLines, color_multiplier);
   evolve();
+
+  if (!digitalRead(input_button_pin)) {
+    generate_center_line();
+  }
 
   delay(16);
 }
@@ -93,15 +105,18 @@ void evolve() {
         }
       }
 
-      for (uint8_t n = 0; n < 9; n++) {
-        uint8_t b = (born_rule >> n) & 1;
-        uint8_t s = (survive_rule >> n) & 1;
+      // if (total_n > 0) {
+      //   total_n -= 1;
+      // }
 
-        if (b && total_n == (n + 1)) {  // born
+      if (current_state == 0) {
+        if ((born_rule >> total_n) & 1) {
           board_copy[y * CELLS_Y + x] = CELL_LIFETIME - 1;
-        } else if (s && current_state > 0 && total_n == (n + 1)) {  // survive
+        }
+      } else {
+        if ((survive_rule >> total_n) & 1) {
           board_copy[y * CELLS_Y + x] = current_state;
-        } else if (current_state > 0) {
+        } else {
           board_copy[y * CELLS_Y + x] = current_state - 1;
         }
       }
