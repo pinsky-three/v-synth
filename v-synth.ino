@@ -16,6 +16,9 @@ const int CELL_LIFETIME = 2;
 const int CELLS_X = PIXELS_X / CELL_SIZE_X;
 const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
 
+const uint8_t STATE_DEAD = 0;
+const uint8_t STATE_ALIVE = CELL_LIFETIME - 1;
+
 ESP_8_BIT_composite video_out(true);
 SimpleKalmanFilter kalman_filter(5, 5, 0.01);
 
@@ -85,31 +88,29 @@ void evolve() {
 
       for (int dx = -1; dx < 2; dx++) {
         for (int dy = -1; dy < 2; dy++) {
-          if (!(dx == 0 && dy == 0)) {
-            int neighbor_state =
-                board[((y + dy) % CELLS_Y) * CELLS_Y + ((x + dx) % CELLS_X)];
+          if (dx != 0 || dy != 0) {
+            int neighborX = (x + dx) % CELLS_X;
+            int neighborY = (y + dy) % CELLS_Y;
 
-            if (neighbor_state == CELL_LIFETIME - 1) {
+            int neighbor_state = board[neighborY * CELLS_Y + neighborX];
+
+            if (neighbor_state == STATE_ALIVE) {
               total_n += 1;
             }
           }
         }
       }
 
-      // if (total_n > 0) {
-      //   total_n -= 1;
-      // }
-
-      if (current_state == 0) {
+      if (current_state == STATE_DEAD) {
         if ((born_rule >> total_n) & 1) {
-          board_copy[y * CELLS_Y + x] = CELL_LIFETIME - 1;
+          board_copy[y * CELLS_Y + x] = STATE_ALIVE;
+        }
+      } else if (current_state == STATE_ALIVE) {
+        if (!((survive_rule >> total_n) & 1)) {
+          board_copy[y * CELLS_Y + x] = STATE_DEAD;
         }
       } else {
-        if ((survive_rule >> total_n) & 1) {
-          board_copy[y * CELLS_Y + x] = current_state;
-        } else {
-          board_copy[y * CELLS_Y + x] = current_state - 1;
-        }
+        board_copy[y * CELLS_Y + x] = current_state - 1;
       }
     }
   }
