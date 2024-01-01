@@ -1,9 +1,6 @@
 #include <ESP_8_BIT_composite.h>
 #include <SimpleKalmanFilter.h>
 
-ESP_8_BIT_composite video_out(true);
-SimpleKalmanFilter kalman_filter(5, 5, 0.01);
-
 const uint8_t input_pot_pin = 34;
 const uint8_t input_pot_2_pin = 35;
 const uint8_t input_button_pin = 33;
@@ -19,19 +16,14 @@ const int CELL_LIFETIME = 2;
 const int CELLS_X = PIXELS_X / CELL_SIZE_X;
 const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
 
+ESP_8_BIT_composite video_out(true);
+SimpleKalmanFilter kalman_filter(5, 5, 0.01);
+
 uint16_t born_rule = 0b000001000;     // {3}
 uint16_t survive_rule = 0b000001100;  // {3,2}
 
 uint8_t board[CELLS_Y * CELLS_X];
 uint8_t board_copy[CELLS_Y * CELLS_X];
-
-// void IRAM_ATTR isr() {
-//   for (int y = CELLS_Y / 2 - 5; y < CELLS_Y / 2 + 5; y++) {
-//     for (int x = 0; x < CELLS_X; x++) {
-//       board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
-//     }
-//   }
-// }
 
 void render(uint8_t** frameBufferLines, int color_multiplier) {
   for (int y = 0; y < PIXELS_Y; y++) {
@@ -55,7 +47,6 @@ void generate_center_line() {
 
 void setup() {
   pinMode(input_button_pin, INPUT_PULLUP);
-  // attachInterrupt(input_button_pin, isr, FALLING);
   analogReadResolution(9);
 
   video_out.begin();
