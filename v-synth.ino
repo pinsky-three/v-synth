@@ -1,9 +1,12 @@
 #include <ESP_8_BIT_composite.h>
 #include <SimpleKalmanFilter.h>
 
-const uint8_t input_pot_pin = 34;
+const uint8_t input_pot_1_pin = 34;
 const uint8_t input_pot_2_pin = 35;
-const uint8_t input_button_pin = 33;
+const uint8_t input_pot_3_pin = 32;
+const uint8_t input_pot_4_pin = 33;
+
+// const uint8_t input_button_pin = 33;
 
 const int CELL_SIZE_X = 2;
 const int CELL_SIZE_Y = 2;
@@ -11,7 +14,7 @@ const int CELL_SIZE_Y = 2;
 const int PIXELS_X = 256;
 const int PIXELS_Y = 240;
 
-const int CELL_LIFETIME = 2;
+const int CELL_LIFETIME = 5;
 
 const int CELLS_X = PIXELS_X / CELL_SIZE_X;
 const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
@@ -20,7 +23,9 @@ const uint8_t STATE_DEAD = 0;
 const uint8_t STATE_ALIVE = CELL_LIFETIME - 1;
 
 ESP_8_BIT_composite video_out(true);
-SimpleKalmanFilter kalman_filter(5, 5, 0.01);
+
+SimpleKalmanFilter filter_1(5, 5, 0.01);
+SimpleKalmanFilter filter_2(0.05, 0.05, 0.01);
 
 uint16_t born_rule = 0b000001000;     // {3}
 uint16_t survive_rule = 0b000001100;  // {3,2}
@@ -40,8 +45,9 @@ void render(uint8_t** frameBufferLines, int color_multiplier) {
   video_out.waitForFrame();
 }
 
-void generate_center_line() {
-  for (int y = CELLS_Y / 2 - 5; y < CELLS_Y / 2 + 5; y++) {
+void generate_center_line(uint8_t thickness) {
+  for (int y = CELLS_Y / 2 - 5 * thickness; y < CELLS_Y / 2 + 5 * thickness;
+       y++) {
     for (int x = 0; x < CELLS_X; x++) {
       board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
     }
@@ -49,7 +55,6 @@ void generate_center_line() {
 }
 
 void setup() {
-  pinMode(input_button_pin, INPUT_PULLUP);
   analogReadResolution(9);
 
   video_out.begin();
@@ -62,16 +67,23 @@ void setup() {
 }
 
 void loop() {
-  uint8_t** frameBufferLines = video_out.getFrameBufferLines();
-  int estimated_value = kalman_filter.updateEstimate(analogRead(input_pot_pin));
+  uint8_t** frame_buffer = video_out.getFrameBufferLines();
+  int estimated_value = filter_1.updateEstimate(analogRead(input_pot_1_pin));
 
   int color_multiplier = map(estimated_value, 0, 511, 0, 255);
 
-  render(frameBufferLines, color_multiplier);
+  born_rule = analogRead(input_pot_2_pin);
+  survive_rule = analogRead(input_pot_3_pin);
+
+  int center_line_force =
+      filter_2.updateEstimate(map(analogRead(input_pot_4_pin), 0, 511, 0, 5));
+
+  render(frame_buffer, color_multiplier);
+
   evolve();
 
-  if (!digitalRead(input_button_pin)) {
-    generate_center_line();
+  if (center_line_force > 0) {
+    generate_center_line(center_line_force);
   }
 
   delay(16);
@@ -94,22 +106,24 @@ void evolve() {
 
             int neighbor_state = board[neighborY * CELLS_Y + neighborX];
 
-            if (neighbor_state == STATE_ALIVE) {
+            if (neighbor_state > 0) {
               total_n += 1;
             }
           }
         }
       }
 
-      if (current_state == STATE_DEAD) {
-        if ((born_rule >> total_n) & 1) {
-          board_copy[y * CELLS_Y + x] = STATE_ALIVE;
-        }
-      } else if (current_state == STATE_ALIVE) {
-        if (!((survive_rule >> total_n) & 1)) {
-          board_copy[y * CELLS_Y + x] = STATE_DEAD;
-        }
+      bool willLive = false;
+
+      if (current_state == 0) {
+        willLive = ((born_rule >> total_n) & 1);
       } else {
+        willLive = ((survive_rule >> total_n) & 1);
+      }
+
+      if (willLive) {
+        board_copy[y * CELLS_Y + x] = CELL_LIFETIME;
+      } else if (current_state > 0) {
         board_copy[y * CELLS_Y + x] = current_state - 1;
       }
     }
