@@ -6,8 +6,6 @@ const uint8_t input_pot_2_pin = 35;
 const uint8_t input_pot_3_pin = 32;
 const uint8_t input_pot_4_pin = 33;
 
-// const uint8_t input_button_pin = 33;
-
 const int CELL_SIZE_X = 2;
 const int CELL_SIZE_Y = 2;
 
@@ -106,24 +104,22 @@ void evolve() {
 
             int neighbor_state = board[neighborY * CELLS_Y + neighborX];
 
-            if (neighbor_state > 0) {
+            if (neighbor_state == STATE_ALIVE) {
               total_n += 1;
             }
           }
         }
       }
 
-      bool willLive = false;
-
-      if (current_state == 0) {
-        willLive = ((born_rule >> total_n) & 1);
+      if (current_state == STATE_DEAD) {
+        if ((born_rule >> total_n) & 1) {
+          board_copy[y * CELLS_Y + x] = STATE_ALIVE;
+        }
+      } else if (current_state == STATE_ALIVE) {
+        if (!((survive_rule >> total_n) & 1)) {
+          board_copy[y * CELLS_Y + x] = STATE_DEAD;
+        }
       } else {
-        willLive = ((survive_rule >> total_n) & 1);
-      }
-
-      if (willLive) {
-        board_copy[y * CELLS_Y + x] = CELL_LIFETIME;
-      } else if (current_state > 0) {
         board_copy[y * CELLS_Y + x] = current_state - 1;
       }
     }
