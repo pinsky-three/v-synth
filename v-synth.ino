@@ -12,7 +12,7 @@ const int CELL_SIZE_Y = 2;
 const int PIXELS_X = 256;
 const int PIXELS_Y = 240;
 
-const int CELL_LIFETIME = 5;
+const int CELL_LIFETIME = 7;
 
 const int CELLS_X = PIXELS_X / CELL_SIZE_X;
 const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
@@ -22,8 +22,7 @@ const uint8_t STATE_ALIVE = CELL_LIFETIME - 1;
 
 ESP_8_BIT_composite video_out(true);
 
-SimpleKalmanFilter filter_1(5, 5, 0.01);
-SimpleKalmanFilter filter_2(0.05, 0.05, 0.01);
+SimpleKalmanFilter filter_1(1, 1, 0.01);
 
 uint16_t born_rule = 0b000001000;     // {3}
 uint16_t survive_rule = 0b000001100;  // {3,2}
@@ -34,9 +33,9 @@ uint8_t board_copy[CELLS_Y * CELLS_X];
 void render(uint8_t** frameBufferLines, int color_multiplier) {
   for (int y = 0; y < PIXELS_Y; y++) {
     for (int x = 0; x < PIXELS_X; x++) {
-      frameBufferLines[y][x] =
-          board[(y / CELL_SIZE_Y) * CELLS_Y + (x / CELL_SIZE_X)] *
-          color_multiplier / CELL_LIFETIME;
+      int index = (y / CELL_SIZE_Y) * CELLS_Y + (x / CELL_SIZE_X);
+
+      frameBufferLines[y][x] = board[index] * color_multiplier / CELL_LIFETIME;
     }
   }
 
@@ -44,8 +43,10 @@ void render(uint8_t** frameBufferLines, int color_multiplier) {
 }
 
 void generate_center_line(uint8_t thickness) {
-  for (int y = CELLS_Y / 2 - 5 * thickness; y < CELLS_Y / 2 + 5 * thickness;
-       y++) {
+  int y_from = CELLS_Y / 2 - 1 * thickness;
+  int y_to = CELLS_Y / 2 + 1 * thickness;
+
+  for (int y = y_from; y < y_to; y++) {
     for (int x = 0; x < CELLS_X; x++) {
       board[y * CELLS_Y + x] = random(0, CELL_LIFETIME);
     }
@@ -73,8 +74,7 @@ void loop() {
   born_rule = analogRead(input_pot_2_pin);
   survive_rule = analogRead(input_pot_3_pin);
 
-  int center_line_force =
-      filter_2.updateEstimate(map(analogRead(input_pot_4_pin), 0, 511, 0, 5));
+  int center_line_force = map(analogRead(input_pot_4_pin), 0, 511, 0, 15);
 
   render(frame_buffer, color_multiplier);
 
