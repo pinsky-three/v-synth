@@ -1,5 +1,14 @@
+#include <ArduinoWebsockets.h>
 #include <ESP_8_BIT_composite.h>
 #include <SimpleKalmanFilter.h>
+#include <WiFi.h>
+
+using namespace websockets;
+
+const char* ssid = "BREGY";              // Enter SSID
+const char* password = "turingmachine";  // Enter Password
+// const char* websockets_server_host = "192.168.8.158";  // Enter server adress
+// const uint16_t websockets_server_port = 3000;          // Enter server port
 
 const uint8_t input_pot_1_pin = 34;
 const uint8_t input_pot_2_pin = 35;
@@ -20,9 +29,33 @@ const int CELLS_Y = PIXELS_Y / CELL_SIZE_Y;
 const uint8_t STATE_DEAD = 0;
 const uint8_t STATE_ALIVE = CELL_LIFETIME - 1;
 
+//
+
+// void onMessageCallback(WebsocketsMessage message) {
+//   Serial.print("Message Length: ");
+//   Serial.println(message.data().length());
+// }
+
+// void onEventsCallback(WebsocketsEvent event, String data) {
+//   if (event == WebsocketsEvent::ConnectionOpened) {
+//     Serial.println("Connnection Opened");
+//   } else if (event == WebsocketsEvent::ConnectionClosed) {
+//     Serial.println("Connnection Closed");
+//   } else if (event == WebsocketsEvent::GotPing) {
+//     Serial.println("Got a Ping!");
+//   } else if (event == WebsocketsEvent::GotPong) {
+//     Serial.println("Got a Pong!");
+//   }
+// }
+
+//
+
 ESP_8_BIT_composite video_out(true);
 
 SimpleKalmanFilter filter_1(1, 1, 0.01);
+
+// WebsocketsClient client;
+WebsocketsServer server;
 
 uint16_t born_rule = 0b000001000;     // {3}
 uint16_t survive_rule = 0b000001100;  // {3,2}
@@ -54,9 +87,31 @@ void generate_center_line(uint8_t thickness) {
 }
 
 void setup() {
-  analogReadResolution(9);
-
   video_out.begin();
+
+  Serial.begin(115200);
+
+  WiFi.begin(ssid, password);
+  Serial.println("Connecting to WiFi");
+
+  for (int i = 0; i < 10 && WiFi.status() != WL_CONNECTED; i++) {
+    Serial.print(".");
+    delay(1000);
+  }
+
+  server.listen(80);
+
+  // client.onMessage(onMessageCallback);
+
+  // client.onEvent(onEventsCallback);
+
+  // client.connect(websockets_server_host, websockets_server_port, "/ws");
+
+  // client.send("Hello Server");
+
+  // client.ping();
+
+  analogReadResolution(9);
 
   for (int y = 0; y < CELLS_Y; y++) {
     for (int x = 0; x < CELLS_X; x++) {
@@ -84,7 +139,21 @@ void loop() {
     generate_center_line(center_line_force);
   }
 
-  delay(16);
+  int current_time = millis();
+
+  while (millis() - current_time < 16) {
+    auto client = server.accept();
+    if (client.available()) {
+      auto msg = client.readBlocking();
+
+      Serial.print("Got Message: ");
+      Serial.println(msg.data());
+
+      client.send("Echo: " + msg.data());
+
+      client.close();
+    }
+  }
 }
 
 void evolve() {
