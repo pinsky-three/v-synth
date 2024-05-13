@@ -14,7 +14,9 @@
     "deque": "cpp",
     "map": "cpp",
     "regex": "cpp",
-    "set": "cpp"
+    "set": "cpp",
+    "__locale": "cpp",
+    "bitset": "cpp"
   },
   "dimmer.enabled": false
 }

@@ -141,19 +141,24 @@ void loop() {
 
   int current_time = millis();
 
-  while (millis() - current_time < 16) {
-    auto client = server.accept();
-    if (client.available()) {
-      auto msg = client.readBlocking();
+  // while (millis() - current_time < 16) {
+  auto client = server.accept();
 
-      Serial.print("Got Message: ");
-      Serial.println(msg.data());
+  if (client.available()) {
+    auto msg = client.readBlocking();
 
-      client.send("Echo: " + msg.data());
+    delay(100);
 
-      client.close();
-    }
+    Serial.print("Got Message: ");
+    Serial.println(msg.data());
+
+    // client.send("Echo: " + msg.data());
+
+    client.send("Hello Client");
+
+    client.close();
   }
+  // }
 }
 
 void evolve() {
